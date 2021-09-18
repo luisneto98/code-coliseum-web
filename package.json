@@ -1,0 +1,39 @@
+{
+  "private": false,
+  "name": "code-coliseum-web",
+  "scripts": {
+    "start": "react-scripts start",
+    "now-start": "serve -s ./build",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "precommit": "pretty-quick --staged"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "prettier": "2.4.1",
+    "react-scripts": "2.1.8"
+  },
+  "dependencies": {
+    "@types/bluebird": "^3.5.36",
+    "antd": "^4.16.13",
+    "axios": "^0.21.4",
+    "bluebird": "^3.7.2",
+    "connected-react-router": "4.5.0",
+    "react": "16.14.0",
+    "react-dom": "16.14.0",
+    "react-redux": "5.1.2",
+    "react-router": "4.4.0-beta.8",
+    "react-router-dom": "4.4.0-beta.8",
+    "redux": "4.1.1",
+    "redux-thunk": "2.3.0",
+    "sanitize.css": "11.0.1",
+    "serve": "10.1.2"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
+}
