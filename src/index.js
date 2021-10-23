@@ -9,17 +9,20 @@ import 'antd/dist/antd.css';
 import 'sanitize.css/sanitize.css'
 import './index.css'
 import { Content, Footer, Header } from 'antd/lib/layout/layout'
-import { Image, Layout } from 'antd'
+import { Image, Layout, Typography } from 'antd'
+
+const { Title } = Typography;
 
 const target = document.querySelector('#root')
 
 render(
   <Provider store={store}>
     <ConnectedRouter history={history}>
-      <Layout>
+      <Layout style={{ minHeight: '100vh' }}>
         <Header>
+          <Title style={{ color: 'white', fontFamily: 'sans-serif' }}> Code Colisium </Title>
         </Header>
-        <Content>
+        <Content style={{ display: 'flex', flex: 1 }}>
           <App />
         </Content>
         <Footer />

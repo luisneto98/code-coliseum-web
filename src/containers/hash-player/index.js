@@ -1,109 +1,186 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { connect } from 'react-redux'
 import player, {
   saveGameLog
 } from '../../modules/player'
 import { bindActionCreators } from 'redux'
-import { Row } from 'antd'
+import { Col, Modal, Row, Typography } from 'antd'
 import { map } from 'bluebird'
 import { each } from 'bluebird'
+import { isEmpty } from '../../utils'
+import Hash from '../../components/hash'
+import History from '../../components/history'
+
+const { Title } = Typography;
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-const CANVAS_WITDH = 2000
-const CANVAS_HEIGHT = 1000
+const default_gamelog = {
+  ['1']: {
+    turns: {
+      "0": { "turn": 0, "player": "1", "move": "4" },
+      "1": { "turn": 1, "player": "2", "move": "5" },
+      "2": { "turn": 2, "player": "1", "move": "6" },
+      "3": { "turn": 3, "player": "2", "move": "7" },
+      "4": { "turn": 4, "player": "1", "move": "2" },
+      "5": { "turn": 5, "player": "2", "move": "1" },
+      "6": { "turn": 6, "player": "1", "move": "3" },
+      "7": { "turn": 7, "player": "2", "move": "8" },
+      "8": { "turn": 8, "player": "1", "move": "9" }
+    },
+    victory: '2'
+  },
+  ['2']: {
+    turns: {
+      "0": { "turn": 0, "player": "1", "move": "4" },
+      "1": { "turn": 1, "player": "2", "move": "5" },
+      "2": { "turn": 2, "player": "1", "move": "6" },
+      "3": { "turn": 3, "player": "2", "move": "7" },
+      "4": { "turn": 4, "player": "1", "move": "2" },
+      "5": { "turn": 5, "player": "2", "move": "1" },
+      "6": { "turn": 6, "player": "1", "move": "3" },
+      "7": { "turn": 7, "player": "2", "move": "8" },
+      "8": { "turn": 8, "player": "1", "move": "9" }
+    },
+    victory: '2'
+  },
+  victory: null
+};
 
-const HASH_START_X = 800
-const HASH_END_X = 1200
-const HASH_START_Y = 300
-const HASH_END_Y = 700
+const POSI_MAP = {
+  "1": { i: 0, j: 0 },
+  "2": { i: 0, j: 1 },
+  "3": { i: 0, j: 2 },
+  "4": { i: 1, j: 0 },
+  "5": { i: 1, j: 1 },
+  "6": { i: 1, j: 2 },
+  "7": { i: 2, j: 0 },
+  "8": { i: 2, j: 1 },
+  "9": { i: 2, j: 2 },
+};
 
-const firstLinePosi = HASH_START_Y + ( HASH_END_Y - HASH_START_Y ) / 3
-const secondLinePosi = HASH_END_Y - ( HASH_END_Y - HASH_START_Y ) / 3
-const firstColPosi = HASH_START_X + ( HASH_END_X - HASH_START_X ) / 3
-const secondColPosi = HASH_END_X - ( HASH_END_X - HASH_START_X ) / 3
-
-const hashPosiToDrawMap = {
-  '1': { x: (firstColPosi + HASH_START_X) / 2, y: firstLinePosi - 10 },
-  '2': { x: (firstColPosi + secondColPosi) / 2, y: firstLinePosi - 10 },
-  '3': { x: (secondColPosi + HASH_END_X) / 2, y: firstLinePosi - 10 },
-  '4': { x: (firstColPosi + HASH_START_X) / 2, y: secondLinePosi - 10 },
-  '5': { x: (firstColPosi + secondColPosi) / 2, y: secondLinePosi - 10 },
-  '6': { x: (secondColPosi + HASH_END_X) / 2, y: secondLinePosi - 10 },
-  '7': { x: (firstColPosi + HASH_START_X) / 2, y: HASH_END_Y - 10 },
-  '8': { x: (firstColPosi + secondColPosi) / 2, y: HASH_END_Y - 10 },
-  '9': { x: (secondColPosi + HASH_END_X) / 2, y: HASH_END_Y - 10 },
-}
-
+const getHashDefault = () => ([['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']]);
+const TAG_ONE = 'X';
+const TAG_TWO = 'O';
 
 const HashPlayer = (props) => {
-  const { gameLog = {} } = props
-  const canvasRef = useRef(null)
-  const drawHash = (ctx: CanvasRenderingContext2D) => {
+  // let gameLog = default_gamelog;
+  const [hash, setHash] = useState(getHashDefault());
+  const [history, setHistory] = useState([]);
+  const [gameNumber, setGameNumber] = useState(1);
+  const [code1Score, setCode1Score] = useState(0);
+  const [code2Score, setCode2Score] = useState(0);
+
+  // if (!isEmpty(props.gameLog))
+  const { gameLog } = props
+
+  function infoRoundWinner(codeWinner) {
+    let secondsToGo = 5;
+    const modal = Modal.info({
+      title: `Final da partida ${gameNumber}`,
+      content: `O ganhador dessa partida foi o ${codeWinner}`,
+    });
+    setTimeout(() => {
+      modal.destroy();
+    }, secondsToGo * 1000);
+  }
+
+  function infoGameWinner(codeWinner) {
+    let secondsToGo = 5;
+    const modal = Modal.success({
+      title: `Final do confronto`,
+      content: codeWinner ? `O ganhador desse confronto foi o ${codeWinner}` : 'O resultado da partida foi empate!',
+    });
+  }
+
+  const runConfrontation = useCallback(async () => {
+    const game = gameLog[gameNumber];
+    await runGame(game.turns, gameNumber);
     
-    ctx.lineWidth = 10
-    ctx.lineCap = 'round'
+    if(game.victory === '1') {
+      infoRoundWinner('Código 1');
+      setCode1Score(code1Score + 1);
+    } else{
+      infoRoundWinner('Código 2');
+      setCode2Score(code2Score + 1);
+    }
+    await delay(5000);
 
-    // coluna esquerda
-    ctx.moveTo(firstColPosi, HASH_START_Y);
-    ctx.lineTo(firstColPosi, HASH_END_Y);
-    // coluna direita
-    ctx.moveTo(secondColPosi, HASH_START_Y);
-    ctx.lineTo(secondColPosi, HASH_END_Y);
-    // linha superior
-    ctx.moveTo(HASH_START_X, firstLinePosi);
-    ctx.lineTo(HASH_END_X, firstLinePosi);
-    // linha inferior
-    ctx.moveTo(HASH_START_X, secondLinePosi);
-    ctx.lineTo(HASH_END_X, secondLinePosi);
+    if (gameNumber == 1) {
+      setHash(getHashDefault());
+      setGameNumber(2);
+    } else {
+      infoGameWinner(gameLog.victory == '1' ? 'Código 1' : gameLog.victory == '2' ? 'Código 2' : null);
+    }
 
-    ctx.stroke()
-  }
+  }, [hash, gameNumber])
 
-  const drawTextOnPosi = (ctx: CanvasRenderingContext2D, text: 'X' | 'O', posi: string) => {
-    const fontSize = firstColPosi - HASH_START_X
-    ctx.font = `${fontSize}px Comic Sans MS`
-    ctx.textAlign = 'center'
-    const posiObj = hashPosiToDrawMap[posi];
-    ctx.fillText(text, posiObj.x, posiObj.y);
-  }
-
-  const drawScorePlayer1 = (ctx: CanvasRenderingContext2D, name: string, score: string, simbol: 'X' | 'O') => {
-    ctx.font = `60px Comic Sans MS`
-    ctx.textAlign = 'center'
-    ctx.fillText(`${name} - (${simbol})`, CANVAS_WITDH * 0.25, CANVAS_HEIGHT * 0.1);
-  }
-
-  const drawScorePlayer2 = (ctx: CanvasRenderingContext2D, name: string, score: string, simbol: 'X' | 'O') => {
-    ctx.font = `60px Comic Sans MS`
-    ctx.textAlign = 'center'
-    ctx.fillText(`${name} - (${simbol})`, CANVAS_WITDH * 0.75, CANVAS_HEIGHT * 0.1);
-  }
-
-  const runGame = async (ctx) => {
-    each(Object.keys(gameLog).sort(), async (key) => { 
+  const runGame = useCallback(async (game, gameNumber) => {
+    await each(Object.keys(game).sort(), async (key) => {
       await delay(2000);
-      const { player, turn, move }: { player: '1' | '2', turn: Number, move: string } = gameLog[key]
-      drawTextOnPosi(ctx, player == '1' ? 'X' : 'O', move)
+      const { player, turn, move }: { player: '1' | '2', turn: Number, move: string } = game[key]
+
+      hash[POSI_MAP[move].i][POSI_MAP[move].j] = player == '1' ? TAG_ONE : TAG_TWO
+      setHash([...hash])
+
+      history.unshift({ turn: turn + 1, move, gameNumber, player: player === '1' ? 'Código 1' : 'Código 2' })
+      setHistory([...history])
+
     }, { concurrency: 1 })
-    
-  }
-  
+  }, [hash, history, gameNumber])
+
   useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx: CanvasRenderingContext2D = canvas.getContext("2d")
-    drawHash(ctx);
-    drawScorePlayer1(ctx, 'Jogador 1', 0, 'X');
-    drawScorePlayer2(ctx, 'Jogador 2', 0, 'O');
-    runGame(ctx);
-  })
+    if(!isEmpty(gameLog))
+      runConfrontation();
+  }, [gameNumber])
 
   return (
-    <Row justify='center'>
-      <canvas ref={canvasRef} width={CANVAS_WITDH} height={CANVAS_HEIGHT} style={{background: 'fffaf8'}}>
-
-      </canvas>
-    </Row>
+    <>
+      <Col span={24}>
+        <Row>
+          <Col span={12} style={{ marginTop: 20 }}>
+            <Row justify='center'>
+              <Title level={2} > Código 1 (X) </ Title>
+            </Row>
+            <Row justify='center'>
+              <Title level={3} >{code1Score}</ Title>
+            </Row>
+          </Col>
+          <Col span={12} style={{ marginTop: 20 }}>
+            <Row justify='center'>
+              <Title level={2} > Código 2 (O) </ Title>
+            </Row>
+            <Row justify='center'>
+              <Title level={3} >{code2Score}</ Title>
+            </Row>
+          </Col>
+        </Row>
+        <Row justify='center'>
+          <Col span={16} style={{ marginTop: 20 }}>
+            <Row justify='center'>
+              <Title># Jogo da Velha</Title>
+            </Row>
+            <Row justify='center'>
+              <Hash
+                hash={hash}
+                tagOne={TAG_ONE}
+                tagTwo={TAG_TWO}
+                tagOneColor="#87CEFA"
+                tagTwoColor="#FF7F50"
+              />
+            </Row>
+            <Row justify='center' style={{ margin: 20 }}>
+              <Title level={2}>Histórico</Title>
+            </Row>
+            <Row justify='center'>
+              <History
+                history={history}
+              />
+            </Row>
+          </Col>
+        </Row>
+      </Col>
+    </>
   )
 }
 

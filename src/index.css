@@ -2,6 +2,10 @@ html {
   font-size: 100%;
 }
 
+#root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
