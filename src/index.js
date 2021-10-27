@@ -9,7 +9,7 @@ import 'antd/dist/antd.css';
 import 'sanitize.css/sanitize.css'
 import './index.css'
 import { Content, Footer, Header } from 'antd/lib/layout/layout'
-import { Image, Layout, Typography } from 'antd'
+import { Image, Layout, Row, Typography } from 'antd'
 
 const { Title } = Typography;
 
@@ -20,7 +20,9 @@ render(
     <ConnectedRouter history={history}>
       <Layout style={{ minHeight: '100vh' }}>
         <Header>
-          <Title style={{ color: 'white', fontFamily: 'sans-serif' }}> Code Colisium </Title>
+          <Row align='middle' style={{ height: '100%' }}>
+            <Title level={1} style={{ color: 'white', fontFamily: 'Montserrat', fontWeight: 800, marginBottom: 0, marginTop: 0 }}> Code Colisium </Title>
+          </Row>
         </Header>
         <Content style={{ display: 'flex', flex: 1 }}>
           <App />
